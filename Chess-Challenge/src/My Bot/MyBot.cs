@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using ChessChallenge.API;
 
 public class MyBot : IChessBot
@@ -109,8 +109,12 @@ public class MyBot : IChessBot
             var pieceValue = pieceValues[(int)pieceType];
             var piecesValue = pieceValue * pieceList.Count;
 
-            score += (pieceList.IsWhitePieceList && isWhite ? piecesValue : -piecesValue); 
+            //Console.WriteLine($"pieceType: {pieceType}, pieceValue: {pieceValue}, count: {pieceList.Count}, pieceValue: {piecesValue}, white: {pieceList.IsWhitePieceList}");
+
+            score += pieceList.IsWhitePieceList ? piecesValue : -piecesValue; 
         }
+
+        //Console.WriteLine("EvaluateBoard: " + score);
         return score;
     }
 }
