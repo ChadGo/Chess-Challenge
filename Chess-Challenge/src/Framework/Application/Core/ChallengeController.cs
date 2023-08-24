@@ -1,4 +1,4 @@
-﻿using ChessChallenge.Chess;
+using ChessChallenge.Chess;
 using ChessChallenge.Example;
 using Raylib_cs;
 using System;
@@ -208,8 +208,8 @@ namespace ChessChallenge.Application
         {
             return type switch
             {
-                PlayerType.MyBot => new ChessPlayer(new MyBot(), type, GameDurationMilliseconds),
-                PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
+                PlayerType.MyBot => new ChessPlayer(CreateBotFromEnvironment("MY_BOT_CLASS_NAME", typeof(MyBot)), type, GameDurationMilliseconds),
+                PlayerType.EvilBot => new ChessPlayer(CreateBotFromEnvironment("EVIL_BOT_CLASS_NAME", typeof(EvilBot)), type, GameDurationMilliseconds),
                 _ => new ChessPlayer(new HumanPlayer(boardUI), type)
             };
         }
@@ -311,6 +311,14 @@ namespace ChessChallenge.Application
                     }
                 }
             }
+        }
+
+        private API.IChessBot CreateBotFromEnvironment(string environmentName, Type defaultType)
+        {
+            var botClassName = Environment.GetEnvironmentVariable(environmentName);
+            var type = botClassName != null ? Type.GetType(botClassName) : defaultType;
+            
+            return (API.IChessBot)Activator.CreateInstance(type);
         }
 
         private void AutoStartNextBotMatchGame(int originalGameID, System.Timers.Timer timer)
