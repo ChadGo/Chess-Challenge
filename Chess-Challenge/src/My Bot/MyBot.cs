@@ -23,7 +23,7 @@ public class MyBot : IChessBot
         foreach(Move move in legalMoves)
         {
             board.MakeMove(move);
-            int score = MiniMax(board, 4, int.MinValue, int.MaxValue, false);
+            int score = MiniMax(board, 4, int.MinValue, int.MaxValue, !isWhite);
             board.UndoMove(move);
 
             if (isWhite && score > bestScore)
