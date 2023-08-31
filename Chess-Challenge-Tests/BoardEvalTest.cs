@@ -27,7 +27,7 @@ public class BoardEvalTest
     }
 
     [Fact]
-    public void MissingBackQueen()
+    public void MissingBlackQueen()
     {
         var evaluation = GetEvaluation("rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
@@ -50,6 +50,26 @@ public class BoardEvalTest
         var evaluation = GetEvaluation("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1");
 
         Assert.Equal(32, evaluation);
+    }
+
+    [Fact]
+    public void OnlyShortSideCastledRookAndKing()
+    {
+        var evaluation = GetEvaluation("5rk1/8/8/8/8/8/8/5RK1 w - - 0 1");
+
+        Assert.Equal(0, evaluation);
+    }
+
+    [Fact]
+    public void CheckIndexCalculations()
+    {
+        for (int index = 0; index < 64; index++)
+        {
+            var lookup_index = ((63 - index) - ((63 - index) % 8) + (index % 8));
+            Console.WriteLine($"Index: {index}, black index: {lookup_index}");
+        }
+        
+
     }
 
     private int GetEvaluation(string fen)
