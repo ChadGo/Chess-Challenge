@@ -22,7 +22,7 @@ public class ChadBot : IChessBot
     static bool OrderSearch(Move move) { return move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion; }
     static Move[] GetLegalMoves(Board board) { return board.GetLegalMoves().OrderByDescending(OrderSearch).ToArray(); }
 
-    private Move GetBestMove(Board board, Move[] legalMoves, Timer timer)
+    private Move GetBestMove(Board board, Move[] legalMoves)
     {
         Move bestMove = Move.NullMove;
         int bestScore = isWhite ? int.MinValue : int.MaxValue;

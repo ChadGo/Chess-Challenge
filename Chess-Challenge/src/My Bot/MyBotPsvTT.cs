@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using ChessChallenge.API;
 
 public class MyBotPsvTT : IChessBot
@@ -22,7 +23,7 @@ public class MyBotPsvTT : IChessBot
         Move bestMove = Move.NullMove;
         int bestScore = isWhite ? int.MinValue : int.MaxValue;
 
-        foreach (Move move in legalMoves)
+        foreach (Move move in legalMoves.OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion))
         {
             board.MakeMove(move);
             int score = MiniMax(board, 4, int.MinValue, int.MaxValue, !isWhite);
@@ -61,7 +62,7 @@ public class MyBotPsvTT : IChessBot
         var ttIndex = boardKey % TRANSPOSITION_TABLE_SIZE;
         var cachedResult = transpositionTable[ttIndex];
 
-        if(cachedResult != null)
+        if (cachedResult != null)
         {
             if (cachedResult.Key == boardKey)
             {
@@ -85,7 +86,7 @@ public class MyBotPsvTT : IChessBot
             //Console.WriteLine("Cache Miss!");
         }
 
-        var legalMoves = board.GetLegalMoves();
+        var legalMoves = board.GetLegalMoves().OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion);
 
         if (maximizing)
         {
@@ -102,6 +103,7 @@ public class MyBotPsvTT : IChessBot
                     break;
                 }
             }
+
             transpositionTable[ttIndex] = new TranspositionTableResult(boardKey, depth, maxEval, true);
 
             return maxEval;
@@ -175,7 +177,7 @@ public class MyBotPsvTT : IChessBot
                 {
                     var index = ChessChallenge.API.BitboardHelper.ClearAndGetIndexOfLSB(ref pieceBitBoard);
 
-                    int[] pieceSquareTable = mg_tables[(int) pieceType - 1];
+                    int[] pieceSquareTable = mg_tables[(int)pieceType - 1];
                     var index_row_number = index / 8;
                     var index_column_number = index % 8;
 
