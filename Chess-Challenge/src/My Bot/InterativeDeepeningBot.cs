@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using ChessChallenge.API;
 using static System.Formats.Asn1.AsnWriter;
@@ -58,7 +58,7 @@ public class IterativeDeepeningBot : IChessBot
 
         int value = 0;
 
-        if (BestMovesByPly[currentPly] != null && move == BestMovesByPly[currentPly])
+        if (BestMovesByPly[currentPly] != Move.NullMove && move == BestMovesByPly[currentPly])
         {
             value =+ 100;
         }
