@@ -5,9 +5,9 @@ public class IterativeDeepeningBotTest
     [Fact]
     public void DefaultBoard()
     {
-        var move = GetMove("r1bqkb1r/ppp2ppp/2n5/3np3/4Q3/2P4P/PP1PNPP1/RNB1KB1R b KQkq - 0 7");
+        var move = GetMove("rnb1kbnr/pppp1ppp/4pq2/8/8/2N1P3/PPPP1PPP/R1BQKBNR w KQkq - 1 3");
 
-        Assert.Equal(0, 0);
+        Assert.Equal("", move.ToString());
     }
 
 

@@ -1,35 +1,67 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
+using static System.Formats.Asn1.AsnWriter;
 
 public class ChadBot : IChessBot
 {
     private bool isWhite;
     private const int TRANSPOSITION_TABLE_SIZE = 1 << 20;
     private TranspositionTableResult[] transpositionTable = new TranspositionTableResult[TRANSPOSITION_TABLE_SIZE];
-    private Move bestMove;
     private int startingPly;
     private int currentPly;
     private Board TheBoard;
-    private Move[] BestMovesByPly;
+    //private Move?[] BestMovesByPly;
+    private Move BestCurrentMoveForIteration;
+    private Timer _timer;
     private bool CancelSearch = false;
 
     public Move Think(Board board, Timer timer)
     {
         CancelSearch = false;
-        BestMovesByPly = new Move[10];
+        //BestMovesByPly = new Move?[10];
         TheBoard = board;
+        _timer = timer;
         isWhite = board.IsWhiteToMove;
         startingPly = TheBoard.PlyCount;
 
-        Move[] moves = GetLegalMoves();
+        Move bestMove = IterativeDeepening();
 
-        Move bestMove = GetBestMove(moves, timer);
+        Log($"Starting Board Eval: {EvaluateBoard(TheBoard)}");
 
-        return (bestMove == Move.NullMove) ? moves[0] : bestMove;
+        if(!board.GetLegalMoves().Contains(bestMove))
+        {
+            Console.Write("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        }
+
+        Log($"{board.CreateDiagram()}");
+        Log($"{board.GetFenString()}");
+
+        return bestMove;
     }
 
-    bool MoveTimedOut(Timer timer) { return timer.MillisecondsElapsedThisTurn > 3000; }
+    private Move IterativeDeepening()
+    {
+        BestCurrentMoveForIteration = Move.NullMove;
+        int depth = 1;
+        while (!CancelSearch)
+        {
+            var move = GetBestMove(depth++);
+
+            //var ply = string.Join(',', BestMovesByPly.Select(m => m.ToString()));
+            //Log(ply);
+
+            if (!CancelSearch && move!= Move.NullMove)
+            {
+                BestCurrentMoveForIteration = move;
+            }
+        }
+        Log($"******************** Selected best move: {BestCurrentMoveForIteration}, piece type: {BestCurrentMoveForIteration.MovePieceType}");
+        return BestCurrentMoveForIteration;
+    }
+
+    bool MoveTimedOut() { return _timer.MillisecondsElapsedThisTurn > 5000; }
     int OrderSearch(Move move)
     {
         //move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion;
@@ -37,12 +69,13 @@ public class ChadBot : IChessBot
 
         int value = 0;
 
-        if (BestMovesByPly[currentPly] != null && move == BestMovesByPly[currentPly])
+        // Do we need to handle repetion here? Probably
+        if (move == BestCurrentMoveForIteration)
         {
-            value =+ 100;
+            value = +100;
         }
 
-        if(move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion)
+        if (move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion)
         {
             value = +1;
         }
@@ -52,39 +85,48 @@ public class ChadBot : IChessBot
     }
     Move[] GetLegalMoves() { return TheBoard.GetLegalMoves().OrderByDescending(OrderSearch).ToArray(); }
 
-    private Move GetBestMove(Move[] legalMoves, Timer timer)
+    private Move GetBestMove(int depth)
     {
-        bestMove = Move.NullMove;
+        Move bestMove = Move.NullMove;
         int bestScore = isWhite ? int.MinValue : int.MaxValue;
-        int depth = 1;
-        while (!CancelSearch)
+        Log($"Depth Test: {depth}");
+        foreach (Move move in GetLegalMoves())
         {
-            Console.WriteLine($"Depth Test: {depth}");
-            foreach (Move move in legalMoves)
+            if (IsBreakPosition(move))
             {
-                TheBoard.MakeMove(move);
-                int score = MiniMax(depth, int.MinValue, int.MaxValue, !isWhite, timer, 0);
-                TheBoard.UndoMove(move);
-
-                if (CancelSearch)
-                {
-                    break;
-                }
-
-                if (isWhite && score > bestScore)
-                {
-                    bestScore = score;
-                    bestMove = move;
-                }
-                else if (!isWhite && score < bestScore)
-                {
-                    bestScore = score;
-                    bestMove = move;
-                }
+                Console.WriteLine("Whoop their it is");
             }
-            depth++;
+
+            TheBoard.MakeMove(move);
+            int score = MiniMax(depth, int.MinValue, int.MaxValue, !isWhite, 0);
+            TheBoard.UndoMove(move);
+
+            if (CancelSearch)
+            {
+                Log("################ Cancel Search ################");
+                break;
+            }
+
+            if (isWhite && score > bestScore)
+            {
+                Log($"******************** Updated best move for white.  Move: {move}, score: {score}, depth: {depth}");
+                bestScore = score;
+                bestMove = move;
+            }
+            else if (!isWhite && score < bestScore)
+            {
+                Log($"******************** Updated best move for black.  Move: {move}, score: {score}, depth: {depth}");
+                bestScore = score;
+                bestMove = move;
+            }
+            else
+            {
+                Log($"******** Eval.  Move: {move}, score: {score}, depth: {depth}");
+            }
+
         }
 
+        Log($"******************** Selected best move: {bestMove}, depth: {depth}, piece type: {bestMove.MovePieceType}");
         return bestMove;
     }
 
@@ -93,13 +135,13 @@ public class ChadBot : IChessBot
         return TheBoard.IsDraw() || TheBoard.IsInCheckmate();
     }
 
-    int MiniMax(int depth, int alpha, int beta, bool maximizing, Timer timer, int plyFromStart)
+    int MiniMax(int depth, int alpha, int beta, bool maximizing, int plyFromStart)
     {
         currentPly = plyFromStart;
 
         var boardKey = TheBoard.ZobristKey;
 
-        if (depth == 0 || IsGameOver())
+        if (depth == 1 || IsGameOver())
         {
             return EvaluateBoard(TheBoard);
 
@@ -108,28 +150,28 @@ public class ChadBot : IChessBot
         var ttIndex = boardKey % TRANSPOSITION_TABLE_SIZE;
         var cachedResult = transpositionTable[ttIndex];
 
-        if(cachedResult != null)
+        if (cachedResult != null)
         {
             if (cachedResult.Key == boardKey)
             {
                 if (cachedResult.Depth >= depth)
                 {
-                    //Console.WriteLine("Cache Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                    //Log("Cache Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                     return cachedResult.Eval;
                 }
                 else
                 {
-                    //Console.WriteLine("Not deep enough!");
+                    //Log("Not deep enough!");
                 }
             }
             else
             {
-                //Console.WriteLine("Collision boom!");
+                //Log("Collision boom!");
             }
         }
         else
         {
-            //Console.WriteLine("Cache Miss!");
+            //Log("Cache Miss!");
         }
 
         var legalMoves = TheBoard.GetLegalMoves().OrderByDescending(OrderSearch);
@@ -141,14 +183,14 @@ public class ChadBot : IChessBot
             foreach (Move move in legalMoves)
             {
                 TheBoard.MakeMove(move);
-                int eval = MiniMax(calculateNewDepth(depth, move), alpha, beta, false, timer, plyFromStart + 1);
+                int eval = MiniMax(calculateNewDepth(depth, move), alpha, beta, false, plyFromStart + 1);
                 TheBoard.UndoMove(move);
 
 
-                if (MoveTimedOut(timer))
+                if (MoveTimedOut())
                 {
                     CancelSearch = true;
-                    //Console.WriteLine("Breaking out after " + timer.MillisecondsElapsedThisTurn);
+                    //Log("Breaking out after " + timer.MillisecondsElapsedThisTurn);
                     //return maximizing ? int.MinValue : int.MaxValue;
                     return int.MinValue;
                 }
@@ -157,7 +199,7 @@ public class ChadBot : IChessBot
                 {
                     maxEval = eval;
                     currentBestMove = move;
-                    BestMovesByPly[plyFromStart] = move;
+                    //BestMovesByPly[plyFromStart] = move;
                 }
                 //maxEval = Math.Max(maxEval, eval);
                 alpha = Math.Max(alpha, eval);
@@ -165,7 +207,7 @@ public class ChadBot : IChessBot
                 {
                     break;
                 }
-            }           
+            }
 
             transpositionTable[ttIndex] = new TranspositionTableResult(boardKey, depth, maxEval, true);
 
@@ -178,14 +220,13 @@ public class ChadBot : IChessBot
             foreach (Move move in legalMoves)
             {
                 TheBoard.MakeMove(move);
-                int eval = MiniMax(calculateNewDepth(depth, move), alpha, beta, true, timer, plyFromStart + 1);
+                int eval = MiniMax(calculateNewDepth(depth, move), alpha, beta, true, plyFromStart + 1);
                 TheBoard.UndoMove(move);
 
-
-                if (MoveTimedOut(timer))
+                if (MoveTimedOut())
                 {
                     CancelSearch = true;
-                    //Console.WriteLine("Breaking out after " + timer.MillisecondsElapsedThisTurn);
+                    //Log("Breaking out after " + timer.MillisecondsElapsedThisTurn);
                     //return maximizing ? int.MinValue : int.MaxValue;
                     return int.MaxValue;
                 }
@@ -194,7 +235,7 @@ public class ChadBot : IChessBot
                 if (minEval > eval)
                 {
                     minEval = eval;
-                    BestMovesByPly[plyFromStart] = move;
+                    //BestMovesByPly[plyFromStart] = move;
                 }
 
                 beta = Math.Min(beta, eval);
@@ -210,7 +251,7 @@ public class ChadBot : IChessBot
 
     static int calculateNewDepth(int currentDepth, Move move)
     {
-        if(currentDepth == 0 && move.IsCapture)
+        if (currentDepth == 1 && move.IsCapture)
         {
             return currentDepth;
         }
@@ -270,7 +311,7 @@ public class ChadBot : IChessBot
                     var index = ChessChallenge.API.BitboardHelper.ClearAndGetIndexOfLSB(ref pieceBitBoard);
                     var lookupTable = board.PlyCount < 30 ? mg_tables : eg_tables;
 
-                    int[] pieceSquareTable = mg_tables[(int) pieceType - 1];
+                    int[] pieceSquareTable = mg_tables[(int)pieceType - 1];
                     var index_row_number = index / 8;
                     var index_column_number = index % 8;
 
@@ -456,4 +497,22 @@ public class ChadBot : IChessBot
         eg_king_table
     };
 
+    bool WriteDebugLogs = true;
+
+    void Log(string message)
+    {
+        if (WriteDebugLogs)
+        {
+            Console.WriteLine(message);
+        }
+    }
+
+    bool IsBreakPosition(Move? move = null)
+    {
+        //return TheBoard.GetFenString() == "rnbqkbnr/pppp1ppp/4p3/8/8/2N5/PPPPPPPP/R1BQKBNR w KQkq - 0 2" && (!move.HasValue || move.ToString() == "Move: 'd2d4'");
+        return  (!move.HasValue || move.ToString() == "Move: 'd2d4'");
+    }
+
 }
+
+
