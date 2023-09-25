@@ -203,8 +203,8 @@ public class MyBot : IChessBot
                 while (pieceBitBoard > 0)
                 {
                     var index = ChessChallenge.API.BitboardHelper.ClearAndGetIndexOfLSB(ref pieceBitBoard);
-
-                    var pieceSquareTable = mg_tables[(int)pieceType - 1];
+                    var lookupTable = board.PlyCount < 30 ? mg_tables : eg_tables;
+                    var pieceSquareTable = lookupTable[(int)pieceType - 1];
                     var index_row_number = index / 8;
                     var index_column_number = index % 8;
 
