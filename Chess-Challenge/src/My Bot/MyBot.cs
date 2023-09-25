@@ -33,12 +33,11 @@ public class MyBot : IChessBot
 
     }
 
-    short[] DecodeDecimalArray(Decimal[] encodedDecimals)
+    short[] DecodeDecimalArray(decimal[] encodedDecimals)
     {
-
-        BigInteger encodedValue = BigInteger.Parse(string.Concat(encodedDecimals.Select(d => d.ToString().Substring(2))));
-        byte[] byteArray = encodedValue.ToByteArray();
-        short[] result = new short[byteArray.Length];
+        var encodedValue = BigInteger.Parse(string.Concat(encodedDecimals.Select(d => d.ToString()[2..])));
+        var byteArray = encodedValue.ToByteArray();
+        var result = new short[byteArray.Length];
 
         Buffer.BlockCopy(byteArray, 0, result, 0, byteArray.Length);
 
@@ -50,21 +49,21 @@ public class MyBot : IChessBot
     {
         isWhite = board.IsWhiteToMove;
 
-        Move[] moves = board.GetLegalMoves();
+        var moves = board.GetLegalMoves();
         var bestMove = GetBestMove(board, moves);
 
-        return (bestMove == Move.NullMove) ? moves[0] : bestMove;
+        return bestMove == Move.NullMove ? moves[0] : bestMove;
     }
 
     Move GetBestMove(Board board, Move[] legalMoves)
     {
-        Move bestMove = Move.NullMove;
+        var bestMove = Move.NullMove;
         int bestScore = isWhite ? int.MinValue : int.MaxValue;
 
         foreach (Move move in legalMoves.OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion))
         {
             board.MakeMove(move);
-            int score = MiniMax(board, 4, int.MinValue, int.MaxValue, !isWhite);
+            var score = MiniMax(board, 4, int.MinValue, int.MaxValue, !isWhite);
             board.UndoMove(move);
 
             if (isWhite && score > bestScore)
@@ -82,7 +81,7 @@ public class MyBot : IChessBot
         return bestMove;
     }
 
-    static bool IsGameOver(Board board)
+    bool IsGameOver(Board board)
     {
         return board.IsDraw() || board.IsInCheckmate();
     }
@@ -92,25 +91,14 @@ public class MyBot : IChessBot
         var boardKey = board.ZobristKey;
 
         if (depth == 0 || IsGameOver(board))
-        {
             return EvaluateBoard(board);
-
-        }
 
         var ttIndex = boardKey % TRANSPOSITION_TABLE_SIZE;
         var cachedResult = transpositionTable[ttIndex];
 
-        if (cachedResult != null)
-        {
-            if (cachedResult.Key == boardKey)
-            {
-                if (cachedResult.Depth >= depth)
-                {
-                    //Console.WriteLine("Cache Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                    return cachedResult.Eval;
-                }
-            }
-        }
+        if (cachedResult != null && cachedResult.Key == boardKey && cachedResult.Depth >= depth)
+            //Console.WriteLine("Cache Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            return cachedResult.Eval;
 
         var legalMoves = board.GetLegalMoves().OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion);
 
@@ -120,7 +108,7 @@ public class MyBot : IChessBot
             foreach (Move move in legalMoves)
             {
                 board.MakeMove(move);
-                int eval = MiniMax(board, depth - 1, alpha, beta, false);
+                var eval = MiniMax(board, depth - 1, alpha, beta, false);
                 board.UndoMove(move);
                 maxEval = Math.Max(maxEval, eval);
                 alpha = Math.Max(alpha, eval);
@@ -155,7 +143,7 @@ public class MyBot : IChessBot
     }
 
     // Piece values: null, pawn, knight, bishop, rook, queen, king
-    static int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
+    int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
 
 
     int EvaluateBoard(Board board)
@@ -168,7 +156,7 @@ public class MyBot : IChessBot
         return score;
     }
 
-    static int EvaluateBoardRawMaterial(Board board)
+    int EvaluateBoardRawMaterial(Board board)
     {
         /// Gets an array of all the piece lists. In order these are:
         /// Pawns(white), Knights (white), Bishops (white), Rooks (white), Queens (white), King (white),
@@ -182,18 +170,17 @@ public class MyBot : IChessBot
             var pieceValue = pieceValues[(int)pieceType];
             var piecesValue = pieceValue * pieceList.Count;
 
-
             score += pieceList.IsWhitePieceList ? piecesValue : -piecesValue;
         }
 
         return score;
     }
 
-    static int GetPSVEvaluation(ChessChallenge.API.Board board)
+    int GetPSVEvaluation(Board board)
     {
         var evaluation = 0;
 
-        foreach (ChessChallenge.API.PieceType pieceType in Enum.GetValues(typeof(ChessChallenge.API.PieceType)))
+        foreach (PieceType pieceType in Enum.GetValues(typeof(PieceType)))
         {
             bool[] colors = { true, false };
             foreach (var isWhiteColor in colors)
@@ -201,7 +188,7 @@ public class MyBot : IChessBot
                 var pieceBitBoard = board.GetPieceBitboard(pieceType, isWhiteColor);
                 while (pieceBitBoard > 0)
                 {
-                    var index = ChessChallenge.API.BitboardHelper.ClearAndGetIndexOfLSB(ref pieceBitBoard);
+                    var index = BitboardHelper.ClearAndGetIndexOfLSB(ref pieceBitBoard);
                     var lookupTable = board.PlyCount < 30 ? mg_tables : eg_tables;
                     var pieceSquareTable = lookupTable[(int)pieceType - 1];
                     var index_row_number = index / 8;
@@ -214,7 +201,7 @@ public class MyBot : IChessBot
                     evaluation += (isWhiteColor ? 1 : -1) * pieceSquareTable[lookup_index];
                 }
             }
-        }
+    }
 
         return evaluation;
     }
@@ -223,10 +210,10 @@ public class MyBot : IChessBot
     //[StructLayout(LayoutKind.Sequential)]
     public class TranspositionTableResult
     {
-        public ulong Key { get; }
-        public int Depth { get; }
-        public int Eval { get; }
-        public bool Maximizing { get; }
+        public ulong Key;
+        public int Depth;
+        public int Eval;
+        public bool Maximizing;
 
         public TranspositionTableResult(ulong key, int depth, int eval, bool maximizing)
         {
@@ -237,9 +224,9 @@ public class MyBot : IChessBot
         }
     }
 
-    static short[][] mg_tables;
+    short[][] mg_tables;
 
-    static short[][] eg_tables;
+    short[][] eg_tables;
 
     decimal[] mg_pawn_table_encoded = new decimal[] {
 0.5281171908439357134103180170m,
