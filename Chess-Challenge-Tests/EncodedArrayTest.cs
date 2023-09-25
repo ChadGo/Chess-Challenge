@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Text;
 using ChessChallenge.Application;
 using ChessChallenge.Chess;
 
@@ -7,26 +8,120 @@ namespace Chess_Challenge_Tests;
 public class EncodedArrayTest
 {
     [Fact]
+    public void Test()
+    {
+        var test = 0.2349820349654654654820394820394820m;
+        Console.WriteLine(test.ToString());
+
+    }
+
+    [Fact]
+    public void BuildEncodedTables()
+    {
+        WriteEncodedCode(mg_pawn_table, "mg_pawn_table_encoded");
+        WriteEncodedCode(eg_pawn_table, "eg_pawn_table_encoded");
+        WriteEncodedCode(mg_knight_table, "mg_knight_table_encoded");
+        WriteEncodedCode(eg_knight_table, "eg_knight_table_encoded");
+        WriteEncodedCode(mg_bishop_table, "mg_bishop_table_encoded");
+        WriteEncodedCode(eg_bishop_table, "eg_bishop_table_encoded");
+        WriteEncodedCode(mg_rook_table, "mg_rook_table_encoded");
+        WriteEncodedCode(eg_rook_table, "eg_rook_table_encoded");
+        WriteEncodedCode(mg_queen_table, "mg_queen_table_encoded");
+        WriteEncodedCode(eg_queen_table, "eg_queen_table_encoded");
+        WriteEncodedCode(mg_king_table, "mg_king_table_encoded");
+        WriteEncodedCode(eg_king_table, "eg_king_table_encoded");
+    }
+
+
+
+    private void WriteEncodedCode(short[] psvTable, string tableName)
+    {
+        var encodedArray = EncodeArray(psvTable);
+
+        var encodedArrayString = encodedArray.ToString();
+
+        Console.WriteLine($"decimal[] {tableName} = new decimal[] {{ ");
+
+        for (int i = 0; i <= encodedArrayString.Length / 28; i++)
+        {
+            if (i == encodedArrayString.Length / 28)
+            {
+                Console.Write($"0.{encodedArrayString.Substring(i * 28)}");
+            }
+            else
+            {
+                Console.Write($"0.{encodedArrayString.Substring(i * 28, 28)}");
+            }
+            Console.WriteLine("m,");
+        }
+
+        Console.WriteLine("};");
+
+
+        var decodedArray = DecodeArray(encodedArray);
+        for (int i = 0; i < 64; i++)
+        {
+            //Console.WriteLine($"expected: {psvTable[i]}, actual: {decodedArray[i]}");
+            Assert.Equal(psvTable[i], decodedArray[i]);
+        }
+    }
+
+
+
+
+    [Fact]
     public void ShouldCaptureQueen()
     {
-        var encodedArray = EncodeArray(mg_pawn_table);
+        var tableToEncode = eg_king_table;
+        var encodedArray = EncodeArray(tableToEncode);
+
+
+        var encodedArrayString = encodedArray.ToString();
+        Console.WriteLine(encodedArray);
+
+        Console.WriteLine("decimal[] encoded = new decimal[] { ");
+
+        for (int i = 0; i <= encodedArrayString.Length / 28; i++)
+        {
+            if(i == encodedArrayString.Length / 28)
+            {
+                Console.Write($"0.{encodedArrayString.Substring(i * 28)}");
+            }
+            else
+            {
+                Console.Write($"0.{encodedArrayString.Substring(i * 28, 28)}");
+            }
+            Console.WriteLine("m,");
+        }
+
+        Console.WriteLine("};");
+
+
+
         var decodedArray = DecodeArray(encodedArray);
+        //var decodedArray = DecodeDecimalArray(encoded);
 
         //Assert.Equal(18446744073709551104, encodedArray);
         int matchCount = 0;
-        for(int i = 0; i < 64; i++)
+        for (int i = 0; i < 64; i++)
         {
-            Console.WriteLine($"expected: {mg_pawn_table[i]}, actual: {decodedArray[i]}");
-            var match = mg_pawn_table[i] == decodedArray[i];
-            if (match) matchCount++;
+            //Console.WriteLine($"expected: {tableToEncode[i]}, actual: {decodedArray[i]}");
+            var match = tableToEncode[i] == decodedArray[i];
+            if (match)
+                matchCount++;
+            else
+                Console.Write("No Matchy");
 
             //Assert.Equal(mg_pawn_table[i], decodedArray[i]);
         }
-        Assert.Fail($"Matches: {matchCount}");
+        Assert.Equal(64, matchCount);
     }
 
-    private short[] DecodeArray(BigInteger encodedValue)
+
+    private short[] DecodeDecimalArray(Decimal[] encodedDecimals)
     {
+
+        BigInteger encodedValue = BigInteger.Parse(string.Concat(encodedDecimals.Select(d => d.ToString().Substring(2))));
         byte[] byteArray = encodedValue.ToByteArray();
         short[] result = new short[byteArray.Length];
 
@@ -52,11 +147,41 @@ public class EncodedArrayTest
         return result;
     }
 
+    private short[] DecodeArray(BigInteger encodedValue)
+    {
+        byte[] byteArray = encodedValue.ToByteArray();
+        short[] result = new short[byteArray.Length];
+
+        Buffer.BlockCopy(byteArray, 0, result, 0, byteArray.Length);
+
+
+
+
+        //for (int i = 0; i < 64; i++)
+        //{
+        //    var offset = i / 16;
+        //    ulong encodedElement = (encodedUlongsArray[offset] >> ((i % 16) * 16)) & 0xFFFF;
+
+
+        //    //bool isNegative = (encodedElement & 0x100) != 0;
+
+        //    // Clear the sign bit and convert the extracted value back to a signed integer
+        //    //short decodedElement = (short)((encodedElement) - 127);
+
+        //    // Restore the negative sign if necessary
+        //    //result[i] = isNegative ? -decodedElement : decodedElement;
+        //    result[i] = (short)(encodedElement - 256);
+        //    Console.WriteLine($"Decoded: {result[i]}");
+        //}
+
+        return result;
+    }
+
     private BigInteger EncodeArray(short[] array)
     {
         byte[] byteArray = new byte[array.Length * 2];
         Buffer.BlockCopy(array, 0, byteArray, 0, byteArray.Length);
-        BigInteger result = new BigInteger(byteArray);
+        BigInteger result = new BigInteger(byteArray, isUnsigned: true);
 
         //for (int i = 0; i < 64; i++)
         //{
@@ -73,6 +198,8 @@ public class EncodedArrayTest
 
         return result;
     }
+
+    static ulong[] psvValues = new ulong[] { };
 
 
     static short[] mg_pawn_table = {
