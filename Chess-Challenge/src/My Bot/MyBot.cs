@@ -6,9 +6,8 @@ using ChessChallenge.API;
 public class MyBot : IChessBot
 {
     bool isWhite;
-    const int TRANSPOSITION_TABLE_SIZE = 1 << 20;
+    const int TRANSPOSITION_TABLE_SIZE = 1 << 23; // Size calculated in MyBotTest.cs
     TranspositionTableResult[] transpositionTable = new TranspositionTableResult[TRANSPOSITION_TABLE_SIZE];
-
 
     public MyBot()
     {
@@ -220,7 +219,8 @@ public class MyBot : IChessBot
         return evaluation;
     }
 
-
+    // Uncomment to calculate the size in MyBotTest.cs
+    //[StructLayout(LayoutKind.Sequential)]
     public class TranspositionTableResult
     {
         public ulong Key { get; }

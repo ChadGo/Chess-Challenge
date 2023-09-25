@@ -1,5 +1,7 @@
-﻿using ChessChallenge.Application;
+﻿using System.Runtime.InteropServices;
+using ChessChallenge.Application;
 using ChessChallenge.Chess;
+using static MyBot;
 
 namespace Chess_Challenge_Tests;
 
@@ -15,6 +17,23 @@ public class MyBotTest
 
         //move.StartSquare.Name == "e2" && move.TargetSquare.Name == "d3"
 
+    }
+
+    [Fact]
+    public void CalcMaxTranspositionTableSize()
+    {
+        const int sizeInMb = 256;
+        int sizeBytes = sizeInMb * 1024 * 1024;
+        //var instance = new TranspositionTableResult(123456789UL, 5, 30000, true);
+        var singleEntrySize = Marshal.SizeOf(typeof(TranspositionTableResult));
+        int numEntries = sizeBytes / singleEntrySize;
+
+        //New max entries: 11184810, old: 8388608, prev: 1048576
+        Assert.Equal(11184810, numEntries); // New theoretical max using all 256 MB of TT space
+        Assert.Equal(8388608, 1 << 23); // Greatest power of 2 that is less than numEntries
+        Assert.Equal(1048576, 1 << 20); // Previous value for max TT entries
+
+        Console.WriteLine($"New max entries: {numEntries}, old: {1 << 23}, prev: {1 << 20}");
     }
 
     private ChessChallenge.API.Move GetMove(string fen)
