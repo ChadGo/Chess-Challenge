@@ -53,16 +53,11 @@ public class MyBot : IChessBot
         return BestNextMove ?? board.GetLegalMoves()[0];
     }
 
-    bool IsGameOver(Board board)
-    {
-        return board.IsDraw() || board.IsInCheckmate();
-    }
-
     int MiniMax(Board board, int depth, int alpha, int beta, bool maximizing)
     {
         var boardKey = board.ZobristKey;
 
-        if (depth == 0 || IsGameOver(board))
+        if (depth == 0 || board.IsDraw() || board.IsInCheckmate())
             return EvalBoard(board);
 
         var ttIndex = boardKey % 8388608;
