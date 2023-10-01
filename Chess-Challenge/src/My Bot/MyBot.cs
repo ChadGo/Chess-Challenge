@@ -44,41 +44,18 @@ public class MyBot : IChessBot
         return result;
     }
 
+    Move BestNextMove = Move.NullMove;
+    int StartingPly;
 
     public Move Think(Board board, Timer timer)
     {
         isWhite = board.IsWhiteToMove;
 
         var moves = board.GetLegalMoves();
-        var bestMove = GetBestMove(board, moves);
+        StartingPly = board.PlyCount;
+        MiniMax(board, 5, int.MinValue, int.MaxValue, isWhite);
 
-        return bestMove == Move.NullMove ? moves[0] : bestMove;
-    }
-
-    Move GetBestMove(Board board, Move[] legalMoves)
-    {
-        var bestMove = Move.NullMove;
-        int bestScore = isWhite ? int.MinValue : int.MaxValue;
-
-        foreach (Move move in legalMoves.OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion))
-        {
-            board.MakeMove(move);
-            var score = MiniMax(board, 4, int.MinValue, int.MaxValue, !isWhite);
-            board.UndoMove(move);
-
-            if (isWhite && score > bestScore)
-            {
-                bestScore = score;
-                bestMove = move;
-            }
-            else if (!isWhite && score < bestScore)
-            {
-                bestScore = score;
-                bestMove = move;
-            }
-        }
-
-        return bestMove;
+        return BestNextMove == Move.NullMove ? moves[0] : BestNextMove;
     }
 
     bool IsGameOver(Board board)
@@ -110,7 +87,15 @@ public class MyBot : IChessBot
                 board.MakeMove(move);
                 var eval = MiniMax(board, depth - 1, alpha, beta, false);
                 board.UndoMove(move);
-                maxEval = Math.Max(maxEval, eval);
+
+                if(maxEval < eval)
+                {
+                    maxEval = eval;
+                    if (StartingPly == board.PlyCount)
+                        BestNextMove = move;
+                    
+                }
+
                 alpha = Math.Max(alpha, eval);
                 if (beta <= alpha)
                 {
@@ -130,7 +115,15 @@ public class MyBot : IChessBot
                 board.MakeMove(move);
                 int eval = MiniMax(board, depth - 1, alpha, beta, true);
                 board.UndoMove(move);
-                minEval = Math.Min(minEval, eval);
+
+                if (minEval > eval)
+                {
+                    minEval = eval;
+                    if (StartingPly == board.PlyCount)
+                        BestNextMove = move;
+
+                }
+
                 beta = Math.Min(beta, eval);
                 if (beta <= alpha)
                 {
@@ -142,7 +135,6 @@ public class MyBot : IChessBot
         }
     }
 
-    // Piece values: null, pawn, knight, bishop, rook, queen, king
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
 
 
