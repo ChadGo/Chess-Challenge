@@ -34,6 +34,7 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
+        BestNextMove = null; // Just in case
         MiniMax(board, 5, int.MinValue, int.MaxValue, board.IsWhiteToMove, true);
 
         return BestNextMove ?? board.GetLegalMoves()[0];
