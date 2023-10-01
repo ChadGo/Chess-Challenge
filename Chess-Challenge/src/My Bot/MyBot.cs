@@ -165,7 +165,7 @@ public class MyBot : IChessBot
             }
         }
 
-        return score;
+        return board.IsInCheckmate() ? (board.IsWhiteToMove ? -1 : 1) * 100000 - board.PlyCount * 100 : score;
     }
 
     // Uncomment to calculate the size in MyBotTest.cs
