@@ -28,32 +28,18 @@ public class MyBot : IChessBot
             DecodeDecimalArray(eg_queen_table_encoded),
             DecodeDecimalArray(eg_king_table_encoded)
         };
-
-    }
-
-    short[] DecodeDecimalArray(decimal[] encodedDecimals)
-    {
-        var encodedValue = BigInteger.Parse(string.Concat(encodedDecimals.Select(d => d.ToString()[2..])));
-        var byteArray = encodedValue.ToByteArray();
-        var result = new short[byteArray.Length];
-
-        Buffer.BlockCopy(byteArray, 0, result, 0, byteArray.Length);
-
-        return result;
     }
 
     Move? BestNextMove;
-    int StartingPly;
 
     public Move Think(Board board, Timer timer)
     {
-        StartingPly = board.PlyCount;
-        MiniMax(board, 5, int.MinValue, int.MaxValue, board.IsWhiteToMove);
+        MiniMax(board, 5, int.MinValue, int.MaxValue, board.IsWhiteToMove, true);
 
         return BestNextMove ?? board.GetLegalMoves()[0];
     }
 
-    int MiniMax(Board board, int depth, int alpha, int beta, bool maximizing)
+    int MiniMax(Board board, int depth, int alpha, int beta, bool maximizing, bool storeMove)
     {
         var boardKey = board.ZobristKey;
 
@@ -63,7 +49,7 @@ public class MyBot : IChessBot
         var ttIndex = boardKey % 8388608;
         var cachedResult = transpositionTable[ttIndex];
 
-        if (cachedResult?.Key == boardKey && cachedResult.Depth >= depth)
+        if (!storeMove && cachedResult?.Key == boardKey && cachedResult.Depth >= depth)
             return cachedResult.Eval;
 
         var legalMoves = board.GetLegalMoves().OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion);
@@ -74,15 +60,14 @@ public class MyBot : IChessBot
             foreach (Move move in legalMoves)
             {
                 board.MakeMove(move);
-                var eval = MiniMax(board, depth - 1, alpha, beta, false);
+                var eval = MiniMax(board, depth - 1, alpha, beta, false, false);
                 board.UndoMove(move);
 
                 if(maxEval < eval)
                 {
                     maxEval = eval;
-                    if (StartingPly == board.PlyCount)
+                    if (storeMove)
                         BestNextMove = move;
-                    
                 }
 
                 alpha = Math.Max(alpha, eval);
@@ -102,15 +87,14 @@ public class MyBot : IChessBot
             foreach (Move move in legalMoves)
             {
                 board.MakeMove(move);
-                int eval = MiniMax(board, depth - 1, alpha, beta, true);
+                int eval = MiniMax(board, depth - 1, alpha, beta, true, false);
                 board.UndoMove(move);
 
                 if (minEval > eval)
                 {
                     minEval = eval;
-                    if (StartingPly == board.PlyCount)
+                    if (storeMove)
                         BestNextMove = move;
-
                 }
 
                 beta = Math.Min(beta, eval);
@@ -182,6 +166,17 @@ public class MyBot : IChessBot
             Depth = depth;
             Eval = eval;
         }
+    }
+
+    short[] DecodeDecimalArray(decimal[] encodedDecimals)
+    {
+        var encodedValue = BigInteger.Parse(string.Concat(encodedDecimals.Select(d => d.ToString()[2..])));
+        var byteArray = encodedValue.ToByteArray();
+        var result = new short[byteArray.Length];
+
+        Buffer.BlockCopy(byteArray, 0, result, 0, byteArray.Length);
+
+        return result;
     }
 
     short[][] mg_tables;
