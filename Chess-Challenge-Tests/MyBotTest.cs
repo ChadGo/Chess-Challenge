@@ -20,6 +20,14 @@ public class MyBotTest
     }
 
     [Fact]
+    public void ShouldMate()
+    {
+        var move = GetMove("3Q4/1P6/8/7k/8/8/8/K5Q1 w - - 0 1");
+
+        Assert.Equal("d3", move.TargetSquare.Name);
+    }
+
+    [Fact]
     public void CalcMaxTranspositionTableSize()
     {
         const int sizeInMb = 256;
@@ -51,7 +59,10 @@ public class MyBotTest
         var bot2 = new MyBot();
         var player2 = new ChessPlayer(bot2, ChallengeController.PlayerType.MyBot);
 
-        ChessChallenge.API.Timer timer = new(player.TimeRemainingMs, player2.TimeRemainingMs, Settings.GameDurationMilliseconds, Settings.IncrementMilliseconds);
+        var playerTimeRemaining = int.MaxValue;
+        var player2TimeRemaining = int.MaxValue;
+
+        ChessChallenge.API.Timer timer = new(playerTimeRemaining, player2TimeRemaining, Settings.GameDurationMilliseconds, Settings.IncrementMilliseconds);
         return player.Bot.Think(botBoard, timer);
     }
 }
