@@ -47,11 +47,10 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
-        var moves = board.GetLegalMoves();
         StartingPly = board.PlyCount;
         MiniMax(board, 5, int.MinValue, int.MaxValue, board.IsWhiteToMove);
 
-        return BestNextMove ?? moves[0];
+        return BestNextMove ?? board.GetLegalMoves()[0];
     }
 
     bool IsGameOver(Board board)
@@ -64,13 +63,12 @@ public class MyBot : IChessBot
         var boardKey = board.ZobristKey;
 
         if (depth == 0 || IsGameOver(board))
-            return EvaluateBoard(board);
+            return EvalBoard(board);
 
         var ttIndex = boardKey % 8388608;
         var cachedResult = transpositionTable[ttIndex];
 
-        if (cachedResult != null && cachedResult.Key == boardKey && cachedResult.Depth >= depth)
-            //Console.WriteLine("Cache Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        if (cachedResult?.Key == boardKey && cachedResult.Depth >= depth)
             return cachedResult.Eval;
 
         var legalMoves = board.GetLegalMoves().OrderByDescending(move => move.IsCapture || move.IsCastles || move.IsEnPassant || move.IsPromotion);
@@ -133,26 +131,13 @@ public class MyBot : IChessBot
 
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
 
-
-    int EvaluateBoard(Board board)
-    {
-        var score = 0;
-
-        score += EvaluateBoardRawMaterial(board);
-        score += GetPSVEvaluation(board);
-
-        return score;
-    }
-
-    int EvaluateBoardRawMaterial(Board board)
+    int EvalBoard(Board board)
     {
         /// Gets an array of all the piece lists. In order these are:
         /// Pawns(white), Knights (white), Bishops (white), Rooks (white), Queens (white), King (white),
         /// Pawns (black), Knights (black), Bishops (black), Rooks (black), Queens (black), King (black)
-        var allPieces = board.GetAllPieceLists();
-
         var score = 0;
-        foreach (var pieceList in allPieces)
+        foreach (var pieceList in board.GetAllPieceLists())
         {
             var pieceType = pieceList.TypeOfPieceInList;
             var pieceValue = pieceValues[(int)pieceType];
@@ -161,12 +146,6 @@ public class MyBot : IChessBot
             score += pieceList.IsWhitePieceList ? piecesValue : -piecesValue;
         }
 
-        return score;
-    }
-
-    int GetPSVEvaluation(Board board)
-    {
-        var evaluation = 0;
 
         foreach (PieceType pieceType in Enum.GetValues(typeof(PieceType)))
         {
@@ -186,12 +165,12 @@ public class MyBot : IChessBot
                     var lookup_column_number = index_column_number;
 
                     var lookup_index = lookup_row_number * 8 + lookup_column_number;
-                    evaluation += (isWhiteColor ? 1 : -1) * pieceSquareTable[lookup_index];
+                    score += (isWhiteColor ? 1 : -1) * pieceSquareTable[lookup_index];
                 }
             }
-    }
+        }
 
-        return evaluation;
+        return score;
     }
 
     // Uncomment to calculate the size in MyBotTest.cs
