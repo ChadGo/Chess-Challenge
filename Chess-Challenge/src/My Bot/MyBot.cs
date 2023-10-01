@@ -5,9 +5,7 @@ using ChessChallenge.API;
 
 public class MyBot : IChessBot
 {
-    bool isWhite;
-    const int TRANSPOSITION_TABLE_SIZE = 1 << 23; // Size calculated in MyBotTest.cs
-    TranspositionTableResult[] transpositionTable = new TranspositionTableResult[TRANSPOSITION_TABLE_SIZE];
+    TranspositionTableResult[] transpositionTable = new TranspositionTableResult[8388608];
 
     public MyBot()
     {
@@ -44,18 +42,16 @@ public class MyBot : IChessBot
         return result;
     }
 
-    Move BestNextMove = Move.NullMove;
+    Move? BestNextMove;
     int StartingPly;
 
     public Move Think(Board board, Timer timer)
     {
-        isWhite = board.IsWhiteToMove;
-
         var moves = board.GetLegalMoves();
         StartingPly = board.PlyCount;
-        MiniMax(board, 5, int.MinValue, int.MaxValue, isWhite);
+        MiniMax(board, 5, int.MinValue, int.MaxValue, board.IsWhiteToMove);
 
-        return BestNextMove == Move.NullMove ? moves[0] : BestNextMove;
+        return BestNextMove ?? moves[0];
     }
 
     bool IsGameOver(Board board)
@@ -70,7 +66,7 @@ public class MyBot : IChessBot
         if (depth == 0 || IsGameOver(board))
             return EvaluateBoard(board);
 
-        var ttIndex = boardKey % TRANSPOSITION_TABLE_SIZE;
+        var ttIndex = boardKey % 8388608;
         var cachedResult = transpositionTable[ttIndex];
 
         if (cachedResult != null && cachedResult.Key == boardKey && cachedResult.Depth >= depth)
@@ -103,7 +99,7 @@ public class MyBot : IChessBot
                 }
             }
 
-            transpositionTable[ttIndex] = new TranspositionTableResult(boardKey, depth, maxEval, true);
+            transpositionTable[ttIndex] = new TranspositionTableResult(boardKey, depth, maxEval);
 
             return maxEval;
         }
@@ -130,7 +126,7 @@ public class MyBot : IChessBot
                     break;
                 }
             }
-            transpositionTable[ttIndex] = new TranspositionTableResult(boardKey, depth, minEval, false);
+            transpositionTable[ttIndex] = new TranspositionTableResult(boardKey, depth, minEval);
             return minEval;
         }
     }
@@ -205,14 +201,12 @@ public class MyBot : IChessBot
         public ulong Key;
         public int Depth;
         public int Eval;
-        public bool Maximizing;
 
-        public TranspositionTableResult(ulong key, int depth, int eval, bool maximizing)
+        public TranspositionTableResult(ulong key, int depth, int eval)
         {
             Key = key;
             Depth = depth;
             Eval = eval;
-            Maximizing = maximizing;
         }
     }
 
